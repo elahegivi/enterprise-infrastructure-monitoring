@@ -1,0 +1,84 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+  - uuid: 07153f8ef0c0457f86445f72d3066e06
+    name: Templates/Network devices
+  templates:
+  - uuid: 681a0715541b48159e27bf94cd749eaf
+    template: Template WAN Dual Link
+    name: Template WAN Dual Link
+    description: Portable example for monitoring primary/backup WAN connectivity using
+      a Zabbix proxy. Use documentation-only IP addresses and validate in a lab before
+      deployment.
+    groups:
+    - name: Templates/Network devices
+    items:
+    - uuid: 238a8d3cd75b427f8b25e3d16b1543b5
+      name: Primary WAN ICMP availability
+      type: SIMPLE
+      key: icmpping[{$PRIMARY_LINK_IP}]
+      delay: 1m
+    - uuid: 5480c296d5b3495987a9757dd6a111ea
+      name: Backup WAN ICMP availability
+      type: SIMPLE
+      key: icmpping[{$BACKUP_LINK_IP}]
+      delay: 1m
+    - uuid: 146d82b2b14b4451bf01388c1bfdf077
+      name: Primary WAN packet loss
+      type: SIMPLE
+      key: icmppingloss[{$PRIMARY_LINK_IP}]
+      delay: 1m
+      value_type: FLOAT
+      units: '%'
+    - uuid: 47d3c9b5c4aa444e909a78df28ed25a8
+      name: Backup WAN packet loss
+      type: SIMPLE
+      key: icmppingloss[{$BACKUP_LINK_IP}]
+      delay: 1m
+      value_type: FLOAT
+      units: '%'
+    - uuid: bca3eb7ba7b3463cbb8ead6917180127
+      name: Primary WAN latency
+      type: SIMPLE
+      key: icmppingsec[{$PRIMARY_LINK_IP}]
+      delay: 1m
+      value_type: FLOAT
+      units: s
+    - uuid: 17a0a7c8aac143a09923abaa5b91eeac
+      name: Backup WAN latency
+      type: SIMPLE
+      key: icmppingsec[{$BACKUP_LINK_IP}]
+      delay: 1m
+      value_type: FLOAT
+      units: s
+    macros:
+    - macro: '{$PRIMARY_LINK_IP}'
+      value: 192.0.2.10
+      description: Documentation-only primary monitoring target
+    - macro: '{$BACKUP_LINK_IP}'
+      value: 198.51.100.10
+      description: Documentation-only backup monitoring target
+    - macro: '{$PRIMARY_PROVIDER}'
+      value: Provider-A
+    - macro: '{$BACKUP_PROVIDER}'
+      value: Provider-B
+  triggers:
+  - uuid: 8d8f50ed3bfc409885f86ce5ea025fea
+    expression: max(/Template WAN Dual Link/icmpping[{$PRIMARY_LINK_IP}],#3)=0
+    name: Primary WAN link is down
+    priority: HIGH
+    description: Three consecutive ICMP checks failed for the primary WAN monitoring
+      target.
+  - uuid: 73e8cc5ef0b749ea8d4e4d2549e1e05c
+    expression: max(/Template WAN Dual Link/icmpping[{$BACKUP_LINK_IP}],#3)=0
+    name: Backup WAN link is down
+    priority: WARNING
+    description: Three consecutive ICMP checks failed for the backup WAN monitoring
+      target.
+  - uuid: f4c0e1bd1c32405590de83c6977b6a67
+    expression: max(/Template WAN Dual Link/icmpping[{$PRIMARY_LINK_IP}],#3)=0 and
+      max(/Template WAN Dual Link/icmpping[{$BACKUP_LINK_IP}],#3)=0
+    name: Both WAN links are down
+    priority: DISASTER
+    description: Both monitoring targets failed three consecutive ICMP checks. Verify
+      route reachability and monitoring proxy health.
