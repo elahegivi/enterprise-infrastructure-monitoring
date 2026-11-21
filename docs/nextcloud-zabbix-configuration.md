@@ -1,228 +1,461 @@
 
-# Nextcloud — Service Monitoring Configuration
+# Nextcloud — Zabbix Monitoring Configuration
 
-## 1. Objective
+## 1. Overview
 
-This case study documents a layered monitoring approach for an enterprise Nextcloud environment integrated with Active Directory.
+This document presents a layered Zabbix monitoring configuration for a self-hosted Nextcloud environment integrated with Active Directory.
 
-The objective is to detect service outages, identify infrastructure bottlenecks, and investigate application dependencies.
+The monitoring design addresses application availability, Linux infrastructure, Apache/PHP, MariaDB, Redis, background jobs, and authentication dependencies.
 
-The design draws on hands-on Nextcloud administration and infrastructure monitoring experience.
+It combines operational knowledge from Nextcloud administration with reusable Zabbix monitoring examples.
 
-All public configuration examples are illustrative and require lab validation.
+## 2. Technology Stack
 
-## 2. Service Architecture
+| Component | Technology |
+|---|---|
+| Application | Nextcloud |
+| Operating System | Linux |
+| Web Server | Apache |
+| Application Runtime | PHP |
+| Database | MariaDB |
+| Caching and File Locking | Redis |
+| Background Processing | Cron |
+| Identity Integration | Active Directory / LDAP |
+| Monitoring | Zabbix 7.4 |
+
+## 3. Logical Architecture
 
 ```mermaid
-flowchart TD
+flowchart TB
     U["Enterprise Users"]
     NC["Nextcloud Application"]
+    WEB["Apache / PHP"]
     DB["MariaDB"]
     RD["Redis"]
-    CR["Background Jobs / Cron"]
+    CR["Cron Background Jobs"]
     AD["Active Directory / LDAP"]
-    Z["Zabbix Monitoring"]
 
-    U -->|"HTTPS"| NC
+    Z["Zabbix Server / Proxy"]
+    AG["Zabbix Agent"]
+
+    U -->|"HTTPS"| WEB
+    WEB --> NC
+
     NC --> DB
     NC --> RD
     NC --> AD
     CR --> NC
 
-    Z -. "Availability and performance checks" .-> NC
-    Z -. "Dependency monitoring" .-> DB
-    Z -. "Service health" .-> RD
-    Z -. "Scheduled job checks" .-> CR
+    Z -->|"Web Monitoring"| WEB
+    Z -->|"Status Endpoint"| NC
+    Z --> AG
+
+    AG --> DB
+    AG --> RD
+    AG --> CR
 ```
 
-This is a logical architecture, not a production network diagram.
+This diagram represents application dependencies and possible monitoring collection paths.
 
-## 3. Monitoring Layers
+## 4. Monitoring Coverage
 
-| Layer | Monitoring Requirement |
-|---|---|
-| Network | Host reachability and latency |
-| Web | HTTPS availability and response time |
-| Operating system | CPU, memory, disk and network traffic |
-| Database | MariaDB availability |
-| Cache | Redis service health |
-| Background processing | Cron execution and job freshness |
-| Authentication | AD/LDAP connectivity and login availability |
-| Application | Nextcloud service status and logs |
+| Layer | Monitoring Signal | Collection Method |
+|---|---|---|
+| Network | Host reachability | ICMP |
+| Web | HTTPS availability | Zabbix Web Scenario |
+| Web | Response time | Zabbix Web Scenario |
+| Application | Nextcloud status | HTTP Agent |
+| Linux | CPU, memory, storage | Zabbix Agent |
+| Apache | Service availability | Zabbix Agent |
+| Database | MariaDB health | Agent / Database Monitoring |
+| Redis | Process and connectivity | Agent / Redis Monitoring |
+| Background Jobs | Execution freshness | Custom Check |
+| Authentication | LDAP connectivity | Service / Application Checks |
+| Security | TLS expiration | Certificate Monitoring |
 
-These are target monitoring capabilities. They should not all be interpreted as previously implemented Zabbix checks.
+The table defines monitoring methods for the proposed configuration. Individual checks can be selected according to operational requirements.
 
-## 4. Example Monitoring Items
+## 5. Host Availability Monitoring
 
-### Host Availability
+### ICMP Availability
 
-Type: Simple check
+Item type: Simple check
 
 Key:
 
-`icmpping`
+```text
+icmpping
+```
 
-Suggested interval: 1m
+Example update interval: `1m`
 
-### HTTPS Availability
+Additional metrics:
 
-Example Zabbix web scenario:
+```text
+icmppingloss
+icmppingsec
+```
 
-- Scenario name: `Nextcloud HTTPS Availability`
-- Step name: `Nextcloud Home`
-- URL: `https://nextcloud.example.com/`
-- Interval: 1m
+These metrics provide host availability, packet loss, and response-time information.
 
-The URL is illustrative.
+### Host Unavailable Trigger
 
-For an unauthenticated endpoint, expected HTTP status codes must account for redirects and application behavior.
+Example Zabbix host: `Nextcloud-Monitoring`
 
-Generated Zabbix item:
+Severity: High
 
-`web.test.fail[Nextcloud HTTPS Availability]`
+```text
+max(/Nextcloud-Monitoring/icmpping,#3)=0
+```
 
-### Linux Resource Monitoring
+The trigger detects three consecutive unsuccessful reachability checks.
 
-Use the appropriate Zabbix Linux agent template to collect:
+## 6. HTTPS Availability Monitoring
+
+Zabbix Web Monitoring can check the user-facing Nextcloud endpoint.
+
+### Web Scenario
+
+| Parameter | Example |
+|---|---|
+| Scenario | Nextcloud HTTPS Availability |
+| Step | Nextcloud Home |
+| URL | https://nextcloud.example.com/ |
+| Interval | 1m |
+| Timeout | 15s |
+| Authentication | According to endpoint requirements |
+
+The example address is illustrative.
+
+Expected HTTP response codes must account for redirects and the authentication behavior of the chosen endpoint.
+
+### Generated Items
+
+Web scenario failure:
+
+```text
+web.test.fail[Nextcloud HTTPS Availability]
+```
+
+Response time:
+
+```text
+web.test.time[Nextcloud HTTPS Availability,Nextcloud Home,resp]
+```
+
+HTTP response code:
+
+```text
+web.test.rspcode[Nextcloud HTTPS Availability,Nextcloud Home]
+```
+
+### Web Scenario Failure Trigger
+
+Severity: High
+
+```text
+last(/Nextcloud-Monitoring/web.test.fail[Nextcloud HTTPS Availability])<>0
+```
+
+This trigger detects a failed web scenario step.
+
+## 7. Nextcloud Application Status
+
+Nextcloud exposes application status information through:
+
+```text
+https://nextcloud.example.com/status.php
+```
+
+An HTTP Agent item can retrieve the status response.
+
+Relevant information includes:
+
+- Installation state
+- Maintenance mode
+- Application version
+- Update requirement
+
+A monitoring configuration can use JSON preprocessing to extract individual fields from the response.
+
+Example JSONPath expressions:
+
+```text
+$.installed
+$.maintenance
+$.needsDbUpgrade
+$.version
+```
+
+Application status monitoring complements HTTPS availability checks.
+
+## 8. Linux Infrastructure Monitoring
+
+Use an appropriate Zabbix Linux Agent template.
+
+Recommended metrics:
 
 - CPU utilization
 - Available memory
-- Disk space and filesystem utilization
+- Filesystem usage
+- Disk I/O
 - Network traffic
 - Host uptime
 - Agent availability
 
-### Redis Monitoring
+### Storage Monitoring
 
-Potential checks include:
+Storage utilization is particularly important for file-sharing platforms.
 
-- Redis service availability
-- Process status
-- Redis responsiveness
-- Memory usage and connection health
+Monitor:
 
-The actual Redis check method must be selected and validated in the lab.
+- Root filesystem utilization
+- Application data storage
+- Database storage
+- Available disk capacity
+- Storage performance trends
 
-### MariaDB Monitoring
+Alert thresholds should account for normal growth and available capacity.
 
-Potential checks include:
+## 9. Apache and PHP Monitoring
+
+Monitor the web and application runtime components.
+
+### Apache
+
+Monitoring areas:
+
+- Service availability
+- HTTP/HTTPS response time
+- CPU and memory utilization
+- Application-related errors
+
+Example Linux service check:
+
+```bash
+systemctl status apache2
+```
+
+### PHP
+
+Monitoring depends on the PHP execution model.
+
+For PHP-FPM deployments, the relevant PHP-FPM service and resource utilization can be monitored.
+
+Application-level error monitoring should use appropriate log collection and access controls.
+
+## 10. MariaDB Monitoring
+
+MariaDB supports Nextcloud's application database.
+
+Recommended monitoring areas:
 
 - Database service availability
+- Database connectivity
 - Active connections
+- CPU and memory utilization
+- Storage capacity
 - Database performance
-- Storage availability
-- Relevant error logs
+- Relevant database errors
 
-Use a supported and tested monitoring method with appropriately restricted database credentials.
+Example service investigation:
 
-## 5. Background Job Monitoring
+```bash
+systemctl status mariadb
+```
 
-Nextcloud uses scheduled background jobs for maintenance and application tasks.
+A running database service does not necessarily guarantee successful application database connectivity.
 
-Potential monitoring signals:
+Database-specific checks should use appropriately restricted monitoring credentials.
 
-- Cron service or timer availability
-- Time since last successful background-job execution
-- Application log errors related to background processing
+## 11. Redis Monitoring
 
-Checking whether the cron service is running is not sufficient to prove that Nextcloud background jobs are succeeding.
+Redis supports caching and transactional file locking in many Nextcloud deployments.
 
-The exact application-level health check will be developed during lab validation.
+Monitoring areas:
 
-## 6. Authentication Monitoring
+- Redis process availability
+- Redis responsiveness
+- Memory utilization
+- Connection health
+- Relevant service errors
 
-Enterprise Nextcloud environments may use Active Directory or LDAP for authentication.
+Example service investigation:
 
-Potential failure scenarios include:
+```bash
+systemctl status redis-server
+```
 
-- LDAP server unreachable
-- Authentication failures
-- Incorrect user mapping
-- TLS or certificate problems
-- Application-side LDAP configuration errors
+Depending on the deployment, Redis may communicate through a Unix socket rather than TCP.
 
-Authentication health should be assessed using approved test procedures and without exposing credentials.
+Monitoring configuration should reflect the actual Redis connection method.
 
-## 7. Example Trigger Expressions
+## 12. Background Job Monitoring
 
-Assume a lab host named `Nextcloud-Lab`.
+Nextcloud relies on scheduled background tasks for application maintenance and asynchronous processing.
 
-### Host Unavailable
+Monitoring considerations:
 
-Severity: High
+- Cron scheduling
+- Last successful background job execution
+- Application errors associated with background processing
+- Job execution delays
 
-`max(/Nextcloud-Lab/icmpping,#3)=0`
+A successful cron service check alone does not confirm that Nextcloud background tasks are executing correctly.
 
-### Web Scenario Failure
+Application-level execution freshness provides a more meaningful monitoring signal.
 
-Severity: High
+## 13. Active Directory / LDAP Monitoring
 
-`last(/Nextcloud-Lab/web.test.fail[Nextcloud HTTPS Availability])<>0`
+Nextcloud can integrate with Active Directory through LDAP.
 
-These are illustrative trigger expressions. Item availability and scenario configuration must be verified first.
+Relevant monitoring areas:
 
-## 8. Incident Investigation Workflow
+- Directory server reachability
+- LDAP connection availability
+- Authentication-related application errors
+- TLS certificate validity
+- Directory service dependencies
+
+Authentication failures may result from network connectivity, directory services, credentials, certificates, or application-side configuration.
+
+Monitoring should avoid exposing user credentials or confidential directory information.
+
+## 14. TLS Certificate Monitoring
+
+Certificate monitoring supports proactive renewal and service availability.
+
+Recommended checks:
+
+- Certificate expiration date
+- Days remaining before expiration
+- HTTPS connection failures
+- Certificate-related application errors
+
+Warning thresholds should align with certificate renewal procedures.
+
+## 15. Operational Alert Scenarios
+
+| Alert | Investigation |
+|---|---|
+| Host unavailable | Network, Linux, virtualization |
+| HTTPS unavailable | Apache, PHP, Nextcloud |
+| Elevated response time | Server resources, database, application |
+| Maintenance mode active | Application state |
+| MariaDB unavailable | Database service and connectivity |
+| Redis unavailable | Cache and file locking |
+| Disk capacity warning | Storage capacity |
+| Background jobs delayed | Cron and application processing |
+| LDAP connectivity failure | Directory service and network |
+| TLS certificate expiring | Certificate renewal |
+
+## 16. Incident Investigation Workflow
 
 ```mermaid
 flowchart TD
-    A["Nextcloud Alert"]
-    B{"Host reachable?"}
-    C["Investigate network and OS"]
-    D{"Web endpoint available?"}
-    E["Check web server / PHP / application logs"]
-    F["Check Redis and MariaDB"]
-    G["Investigate cron or LDAP if relevant"]
-    H["Confirm recovery and document incident"]
+    A["Nextcloud Monitoring Alert"]
+    B{"Host Reachable?"}
+    C["Investigate Network / Linux"]
+    D{"HTTPS Available?"}
+    E["Check Apache / PHP"]
+    F["Review Nextcloud Status"]
+    G["Inspect MariaDB / Redis"]
+    H["Review Cron / LDAP"]
+    I["Check Logs and Resources"]
+    J["Verify Recovery"]
+    K["Document Incident"]
 
     A --> B
     B -->|No| C
     B -->|Yes| D
+
+    C --> I
     D -->|No| E
     D -->|Yes| F
-    E --> F
+
+    E --> G
     F --> G
     G --> H
-    C --> H
+    H --> I
+    I --> J
+    J --> K
 ```
 
-## 9. Operational Considerations
+### Investigation Procedure
 
-- Separate host availability from application availability.
-- Review Redis and database dependencies during incidents.
-- Treat successful HTTP responses as only one health indicator.
-- Monitor filesystem capacity and application storage requirements.
-- Protect administrative and monitoring credentials.
-- Avoid exposing internal LDAP details.
-- Apply monitoring intervals appropriate to the service.
-- Record confirmed root causes and corrective actions.
+1. Review the Zabbix monitoring event.
+2. Verify host connectivity.
+3. Check HTTPS availability and response time.
+4. Review the Nextcloud status endpoint.
+5. Inspect Apache and PHP services.
+6. Verify MariaDB availability.
+7. Review Redis connectivity.
+8. Check background job execution.
+9. Investigate LDAP dependencies where relevant.
+10. Review Linux resources and application logs.
+11. Confirm service recovery.
+12. Document the incident and corrective action.
 
-## 10. Implementation & Validation Status
+## 17. Monitoring Design Considerations
 
-| Area | Status |
-|---|---|
-| Nextcloud administration | Hands-on operational experience |
-| Active Directory integration | Hands-on operational experience |
-| Redis and cron configuration | Hands-on operational experience |
-| Multi-layer monitoring design | Documented |
-| Reproducible lab configuration | Pending |
-| Exportable Zabbix template | Pending |
-| Failure simulation and screenshots | Pending |
+- Monitor application availability separately from host availability.
+- Correlate web response time with database and infrastructure metrics.
+- Monitor supporting services and application dependencies.
+- Choose monitoring methods appropriate to the deployment.
+- Use meaningful alert thresholds.
+- Protect monitoring credentials.
+- Restrict access to monitoring interfaces.
+- Document incident investigation procedures.
 
-## 11. Future Lab Tasks
+## 18. Operational Verification Checklist
 
-- [ ] Deploy an isolated Nextcloud test environment
-- [ ] Configure a Nextcloud HTTPS web scenario
-- [ ] Monitor Linux server resources
-- [ ] Validate Redis and MariaDB monitoring
-- [ ] Implement cron freshness monitoring
-- [ ] Test simulated dependency failures
-- [ ] Capture sanitized monitoring evidence
-- [ ] Export a validated monitoring configuration
+### Application Monitoring
 
-## 12. Lessons Learned
+- [ ] Verify HTTPS availability
+- [ ] Review HTTP response codes
+- [ ] Confirm Nextcloud status endpoint checks
+- [ ] Review application response time
 
-Reliable Nextcloud operations depend on more than web availability.
+### Infrastructure
 
-Database health, Redis caching, background processing, filesystem capacity and authentication services all contribute to application reliability.
+- [ ] Verify Linux Agent availability
+- [ ] Review CPU and memory monitoring
+- [ ] Check filesystem utilization
+- [ ] Review network metrics
 
-Layered monitoring makes it easier to identify which dependency requires investigation.
+### Dependencies
+
+- [ ] Review Apache and PHP services
+- [ ] Check MariaDB availability
+- [ ] Verify Redis service health
+- [ ] Inspect background job monitoring
+- [ ] Review LDAP connectivity where applicable
+
+### Alerting
+
+- [ ] Review availability triggers
+- [ ] Confirm notification policies
+- [ ] Review trigger severity levels
+- [ ] Check incident escalation procedures
+
+## 19. Security Considerations
+
+- Protect application and monitoring credentials.
+- Apply least-privilege access.
+- Use secure communication.
+- Avoid publishing internal infrastructure identifiers.
+- Exclude sensitive application and directory logs from public repositories.
+- Use dedicated monitoring accounts where appropriate.
+
+## 20. Related Documentation
+
+- [Nextcloud Service Monitoring](nextcloud-service-monitoring.md)
+- [Monitoring Architecture](architecture.md)
+- [Monitoring Dashboards and Alerting](monitoring-dashboards-alerting.md)
+- [Incident Response Runbooks](incident-response-runbooks.md)
+
+## 21. References
+
+- [Nextcloud Administration Documentation](https://docs.nextcloud.com/server/latest/admin_manual/)
+- [Zabbix Documentation](https://www.zabbix.com/documentation/current/)
+- [Zabbix Web Monitoring](https://www.zabbix.com/documentation/current/en/manual/web_monitoring)
