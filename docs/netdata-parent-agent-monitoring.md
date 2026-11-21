@@ -1,184 +1,323 @@
 
 # Netdata — Parent-Agent Monitoring Architecture
 
-## 1. Project Overview
+## 1. Overview
 
-This case study documents a centralized performance monitoring architecture using Netdata Parent and distributed Netdata Agents.
+This case study documents a centralized infrastructure performance monitoring architecture using Netdata Parent and distributed Netdata Agents.
 
-The implementation is based on hands-on infrastructure monitoring work in an enterprise environment.
+The architecture is based on hands-on enterprise infrastructure monitoring experience involving Linux servers and application services.
 
-The objective is to collect detailed system and application metrics from multiple servers and provide centralized visibility into performance and resource utilization.
+The primary objective is to collect detailed system performance metrics from multiple hosts and provide centralized visibility for troubleshooting, performance investigation, and capacity analysis.
 
-All hostnames, network addresses, and configuration examples in this document are anonymized.
+Infrastructure identifiers and configuration examples are anonymized.
 
 ## 2. Technology Stack
 
 | Component | Technology |
 |---|---|
-| Monitoring platform | Netdata |
-| Central collection | Netdata Parent |
-| Distributed collection | Netdata Agents |
-| Operating systems | Linux servers |
-| Application monitoring | GitLab and supporting services |
-| Data transport | Netdata metrics streaming |
+| Monitoring Platform | Netdata |
+| Central Metrics Collection | Netdata Parent |
+| Distributed Monitoring | Netdata Agents |
+| Operating Systems | Linux |
+| Application Infrastructure | GitLab and supporting services |
+| Metrics Transport | Netdata Streaming |
+| Complementary Monitoring | Zabbix |
 
 ## 3. Monitoring Architecture
 
 ```mermaid
 flowchart TB
-    A["Linux Server A — Netdata Agent"]
+    A["Linux Server — Netdata Agent"]
     B["GitLab Server — Netdata Agent"]
     P["Central Netdata Parent"]
     D["Centralized Performance Dashboards"]
+    OPS["IT Operations"]
 
-    A -->|"Metrics streaming"| P
-    B -->|"Metrics streaming"| P
+    A -->|"Metrics Streaming"| P
+    B -->|"Metrics Streaming"| P
     P --> D
+    OPS --> D
 ```
 
-This diagram represents the logical monitoring architecture, not an actual production network topology.
+The diagram illustrates the logical Parent-Agent architecture and centralized metric collection.
 
 ## 4. Netdata Parent
 
-The central Netdata Parent acts as a collection point for metrics streamed from distributed agents.
+The Netdata Parent acts as the central receiving and visualization point for metrics streamed from distributed Agents.
 
-Key responsibilities include:
+### Key Responsibilities
 
-- Receiving metrics from authorized agents
-- Providing centralized visibility into monitored nodes
-- Supporting analysis of historical performance data
-- Simplifying performance investigation across servers
+- Receive metrics from authorized Agents
+- Provide centralized visibility into monitored servers
+- Maintain historical metrics according to configured retention
+- Support cross-server performance analysis
+- Assist troubleshooting of infrastructure and application issues
 
-The actual data retention and storage configuration depend on the deployed environment.
+### Operational Considerations
+
+The Parent requires sufficient:
+
+- CPU and memory resources
+- Storage capacity
+- Network connectivity
+- Data retention configuration
+- Access controls
+
+Capacity requirements depend on the number of monitored nodes, metrics volume, and retention settings.
 
 ## 5. Netdata Agents
 
-Netdata Agents collect detailed performance metrics locally and stream them to the Parent.
+Netdata Agents collect system and application metrics locally.
 
-Typical monitoring areas include:
+### Monitoring Coverage
 
-- CPU utilization and load
+Typical metrics include:
+
+- CPU utilization and system load
 - Memory consumption
-- Disk I/O and filesystem activity
+- Disk I/O
+- Filesystem utilization
 - Network interface traffic
-- System processes
-- Application-specific metrics where supported
+- System process activity
+- Application-specific metrics where available
 
-Agent collection and streaming should be validated independently.
+The Agents can stream collected metrics to the central Parent.
 
-## 6. Streaming Configuration Concepts
+### Operational Benefits
 
-A typical Netdata streaming setup requires configuration on both the Parent and Agent sides.
+Distributed collection enables performance visibility across multiple hosts while preserving a centralized point for analysis.
+
+## 6. Metrics Streaming
+
+Netdata streaming enables an Agent to send collected metrics to a configured Parent.
+
+The architecture involves configuration on both the receiving Parent and sending Agent.
 
 ### Parent Configuration
 
-The Parent must be configured to accept streaming connections from authorized agents.
+The Parent must be configured to accept connections from authorized Agents.
 
-Important concepts include:
+Important configuration areas include:
 
 - Streaming API key
 - Allowed sender addresses
-- Storage and retention settings
 - Network access controls
+- Metrics storage and retention
+- Receiving connection settings
 
 ### Agent Configuration
 
-Each Agent requires settings that identify:
+The sending Agent requires:
 
-- Whether streaming is enabled
-- The Parent destination
-- The streaming API key
-- Applicable connection and transport settings
+- Streaming enabled
+- Parent destination
+- Streaming API key
+- Appropriate connection settings
 
-Actual configuration directives depend on the installed Netdata version.
+### Example Agent Configuration
 
-Production API keys, internal IP addresses, and access rules must never be committed to this repository.
+The following illustrates the main settings in `stream.conf`:
+
+```ini
+[stream]
+    enabled = yes
+    destination = netdata-parent.example.com:19999
+    api key = 11111111-2222-3333-4444-555555555555
+```
+
+The API key and hostname are examples.
+
+The Parent must authorize the corresponding streaming API key and sender.
+
+### Example Parent Configuration
+
+```ini
+[11111111-2222-3333-4444-555555555555]
+    enabled = yes
+    allow from = 192.0.2.*
+```
+
+The example uses a documentation-only IP range.
+
+Actual configuration syntax and available options should be checked against the installed Netdata version.
 
 ## 7. GitLab Performance Monitoring
 
-One of the monitored application environments included GitLab.
+GitLab was one of the application environments included in the infrastructure monitoring work.
 
-The monitoring approach focused on collecting system and application performance metrics to support troubleshooting and capacity analysis.
+The monitoring approach focuses on system resource visibility and supporting application performance metrics.
 
-### Relevant Metrics
+### Relevant Monitoring Areas
 
-- Host CPU and memory utilization
-- Disk I/O and storage activity
+- CPU utilization
+- Memory consumption
+- Disk I/O
+- Storage capacity
 - Network traffic
-- GitLab-related process resource consumption
-- Puma application-server metrics, where available
+- GitLab-related processes
+- Puma application-server metrics where supported
 
-Application-specific collectors and metric availability must be confirmed against the running GitLab and Netdata versions.
+Application-specific metric availability depends on the installed GitLab components and Netdata collectors.
 
-## 8. Incident Investigation Workflow
+### Operational Analysis
 
-```mermaid
-flowchart TD
-    A["Performance Alert or Report"]
-    B["Open Netdata Dashboard"]
-    C["Identify Affected Node"]
-    D["Review CPU, Memory, Disk and Network"]
-    E["Inspect Application Metrics"]
-    F["Correlate with Application Logs"]
-    G["Document Findings"]
+Resource metrics can help investigate:
 
-    A --> B --> C --> D --> E --> F --> G
-```
+- High CPU consumption
+- Memory pressure
+- Storage bottlenecks
+- Network utilization
+- Application performance degradation
+
+Monitoring data should be correlated with application logs and service metrics when investigating incidents.
+
+## 8. Centralized Performance Dashboard
+
+A centralized dashboard provides visibility into monitored Linux nodes.
+
+Recommended dashboard areas include:
+
+| Dashboard Area | Metrics |
+|---|---|
+| CPU | Utilization and system load |
+| Memory | Used, available and cached memory |
+| Storage | Disk I/O and filesystem utilization |
+| Network | Interface traffic |
+| Processes | Resource utilization |
+| Application | GitLab-related metrics where available |
+
+Historical metrics help identify recurring performance patterns and capacity-related concerns.
 
 ## 9. Troubleshooting Streaming Issues
 
-### Symptoms
+### Common Symptoms
 
-- An Agent stops updating
-- Expected metrics are missing from the Parent
-- A monitored node becomes unavailable
+- Agent metrics stop updating
+- Expected nodes are missing from the Parent
+- Metric collection is interrupted
+- Streaming connections fail
+- Monitoring data becomes stale
 
-### Investigation Steps
+### Investigation Procedure
 
-1. Verify connectivity between the Agent and Parent.
-2. Check the Netdata service status on both hosts.
-3. Review the Agent streaming configuration.
-4. Verify the Parent destination and API key configuration.
-5. Check network and firewall permissions.
-6. Review Netdata logs for connection or authentication errors.
-7. Confirm that metrics resume updating.
+1. Verify Agent-to-Parent connectivity.
+2. Check Netdata service status.
+3. Review Agent streaming configuration.
+4. Confirm Parent address and port.
+5. Verify streaming API key configuration.
+6. Review firewall permissions.
+7. Inspect Netdata logs.
+8. Confirm that metrics resume updating.
+
+### Example Linux Commands
+
+Check the Netdata service:
+
+```bash
+sudo systemctl status netdata
+```
+
+Review recent logs:
+
+```bash
+sudo journalctl -u netdata -n 100 --no-pager
+```
+
+Check connectivity to the Parent:
+
+```bash
+nc -vz netdata-parent.example.com 19999
+```
+
+Review streaming configuration without exposing credentials:
+
+```bash
+sudo grep -E 'enabled|destination' /etc/netdata/stream.conf
+```
+
+The configuration file path may differ depending on the installation method.
+
+### Recovery Verification
+
+- Confirm Agent service availability.
+- Verify streaming connectivity.
+- Check the Parent dashboard.
+- Confirm fresh metrics from the affected Agent.
+- Review resource and network stability.
 
 ## 10. Security Considerations
 
-- Restrict streaming access to authorized agents.
+- Restrict streaming connections to authorized Agents.
 - Protect API keys and configuration files.
-- Use encrypted transport where configured and supported.
-- Avoid exposing monitoring endpoints unnecessarily.
-- Review network access between monitoring components.
-- Do not publish production configuration files without sanitization.
+- Use appropriate network segmentation.
+- Apply firewall restrictions.
+- Use encrypted transport where supported and configured.
+- Restrict access to monitoring dashboards.
+- Avoid exposing monitoring endpoints publicly without appropriate protection.
+- Exclude production secrets and internal network details from public repositories.
 
-## 11. Implementation Status
+## 11. Operational Verification Checklist
 
-| Area | Status |
+### Netdata Parent
+
+- [ ] Verify Netdata service status
+- [ ] Review receiving configuration
+- [ ] Confirm authorized streaming connections
+- [ ] Inspect storage and retention settings
+- [ ] Review system resource utilization
+
+### Netdata Agents
+
+- [ ] Verify Agent service availability
+- [ ] Confirm streaming configuration
+- [ ] Check Parent connectivity
+- [ ] Review collected metrics
+- [ ] Confirm fresh data in the Parent dashboard
+
+### Monitoring Quality
+
+- [ ] Review CPU and memory metrics
+- [ ] Inspect disk and network performance
+- [ ] Verify application metrics where available
+- [ ] Review historical performance trends
+
+### Security
+
+- [ ] Protect streaming credentials
+- [ ] Review firewall permissions
+- [ ] Restrict monitoring dashboard access
+- [ ] Exclude sensitive configuration data from public documentation
+
+## 12. Netdata and Zabbix Integration in Operations
+
+Zabbix and Netdata provide complementary monitoring capabilities.
+
+| Platform | Operational Focus |
 |---|---|
-| Central Netdata Parent | Previously implemented |
-| Distributed Netdata Agents | Previously implemented |
-| Metrics streaming | Previously configured |
-| GitLab-related performance monitoring | Previously investigated |
-| Public example configuration | Planned |
-| Reproducible lab deployment | Pending |
-| Failure simulation and screenshots | Pending |
+| Zabbix | Monitoring configuration, triggers, alerts and service availability |
+| Netdata | Detailed system performance metrics and resource analysis |
 
-## 12. Future Lab Validation
+Zabbix provides structured event detection and notification workflows.
 
-- [ ] Deploy a dedicated Netdata Parent
-- [ ] Install two Netdata Agents
-- [ ] Configure authorized metrics streaming
-- [ ] Verify centralized metric collection
-- [ ] Validate system resource metrics
-- [ ] Configure GitLab-related monitoring in a lab
-- [ ] Test Agent-to-Parent communication failures
-- [ ] Add anonymized screenshots and configuration examples
+Netdata adds detailed performance visibility that can help engineers investigate resource consumption and application behavior.
+
+Using both platforms supports a broader understanding of infrastructure health.
 
 ## 13. Lessons Learned
 
-Centralized performance monitoring complements infrastructure availability monitoring.
+Centralized monitoring is most effective when availability checks and detailed performance metrics are analyzed together.
 
-While Zabbix provides structured monitoring, triggers, and alerting workflows, Netdata adds detailed performance visibility that can assist with troubleshooting and resource analysis.
+A Parent-Agent architecture provides centralized performance visibility while allowing metrics to be collected locally on distributed infrastructure.
 
-Using both technologies can provide a broader view of infrastructure health and application behavior.
+Reliable operation depends on correct streaming configuration, network connectivity, security controls, and consistent troubleshooting procedures.
+
+## 14. Related Documentation
+
+- [Monitoring Architecture](architecture.md)
+- [Monitoring Dashboards and Alerting](monitoring-dashboards-alerting.md)
+- [Incident Response Runbooks](incident-response-runbooks.md)
+
+## 15. References
+
+- [Netdata Documentation](https://learn.netdata.cloud/)
+- [Zabbix Documentation](https://www.zabbix.com/documentation/current/)
