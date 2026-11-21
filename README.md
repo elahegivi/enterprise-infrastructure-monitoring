@@ -5,216 +5,254 @@
 
 ## Overview
 
-This repository documents enterprise infrastructure and service monitoring practices based on hands-on experience supporting a distributed IT environment with 1,000+ users across 31 branches.
+This repository presents enterprise infrastructure and service monitoring practices based on hands-on experience supporting an IT environment with more than 1,000 users across 31 branch offices.
 
-The project focuses on infrastructure visibility, proactive alerting, service availability, performance monitoring, and efficient incident troubleshooting using Zabbix and Netdata.
+The project focuses on monitoring enterprise systems, network connectivity, application availability, service performance, alerting, and incident response.
 
-The portfolio includes technical case studies covering enterprise network monitoring, Windows and Linux infrastructure, business-critical applications, distributed monitoring architecture, and operational troubleshooting.
+It combines operational experience, technical architecture documentation, monitoring configuration examples, and troubleshooting procedures.
 
-All examples are anonymized and adapted for demonstration purposes. No production credentials, confidential configurations, or sensitive network information are intentionally included.
+## Technology Stack
 
-## Key Monitoring Areas
-
-### 1. Network & WAN Monitoring
-
-- Primary and backup WAN link availability
-- ICMP reachability, packet loss, and response time
-- Branch connectivity monitoring
-- Link failure detection and alerting
-- Network incident investigation
-
-### 2. Server & Infrastructure Monitoring
-
-- Windows and Linux server availability
-- CPU, memory, and disk utilization
-- Network interface traffic
-- Critical operating system services
-- Distributed monitoring using Zabbix Proxies
-- Performance visibility using Netdata
-
-### 3. Application & Service Monitoring
-
-- HTTP/HTTPS service availability
-- Web response time monitoring
-- Windows service and process monitoring
-- Jira and Tomcat monitoring
-- SharePoint, IIS, and SQL Server dependencies
-- Nextcloud, Redis, MariaDB, and background jobs
-- TLS certificate expiration monitoring
-
-### 4. Alerting & Incident Response
-
-- Zabbix items, triggers, and event severity
-- Operational dashboards
-- Alert notification workflows
-- Incident identification and troubleshooting
-- Root-cause investigation
-- Technical documentation and runbooks
-
-## Technologies
-
-| Category | Technologies |
+| Technology | Purpose |
 |---|---|
-| Monitoring | Zabbix 7.4, Netdata |
-| Operating Systems | Windows Server, Debian Linux |
-| Networking | TCP/IP, ICMP, LAN/WAN, VPN, IPsec |
-| Infrastructure Automation | Ansible |
-| Web & Application Services | Jira, Tomcat, SharePoint, IIS, Nextcloud |
-| Databases | Microsoft SQL Server, MariaDB, MySQL |
-| Additional Components | Redis, GitLab, Active Directory |
-
-## Technical Case Studies
-
-### Monitoring Architecture & Infrastructure
-
-| Case Study | Technical Focus |
-|---|---|
-| [Enterprise Monitoring Architecture](docs/architecture.md) | Central Zabbix Server, proxies, Netdata, monitoring design |
-| [Zabbix Proxy Deployment](docs/zabbix-proxy-deployment.md) | Active proxies, Debian 12, Office and DMZ |
-| [Netdata Parent-Agent Monitoring](docs/netdata-parent-agent-monitoring.md) | Centralized performance metrics and streaming |
-| [Monitoring Dashboards & Alerting](docs/monitoring-dashboards-alerting.md) | Dashboards, alert severity, service health |
-
-### Network & WAN Monitoring
-
-| Case Study | Technical Focus |
-|---|---|
-| [Branch WAN Monitoring](docs/branch-wan-monitoring.md) | Dual WAN links, ICMP checks, packet loss, latency and failure detection |
-
-### Enterprise Application Monitoring
-
-| Case Study | Technical Focus |
-|---|---|
-| [Jira & Tomcat Monitoring](docs/jira-tomcat-monitoring.md) | Application availability, services, performance and TLS |
-| [Jira Zabbix Configuration](docs/jira-zabbix-configuration.md) | Items, triggers, web scenarios and troubleshooting |
-| [SharePoint Portal Monitoring](docs/sharepoint-portal-monitoring.md) | IIS, authenticated web monitoring and SQL dependencies |
-| [SharePoint Zabbix Configuration](docs/sharepoint-zabbix-configuration.md) | NTLM, IIS health, SQL monitoring and performance investigation |
-| [Nextcloud Service Monitoring](docs/nextcloud-service-monitoring.md) | Application health and infrastructure dependencies |
-| [Nextcloud Zabbix Configuration](docs/nextcloud-zabbix-configuration.md) | Redis, MariaDB, cron and LDAP monitoring design |
-
-### IT Operations & Incident Management
-
-| Case Study | Technical Focus |
-|---|---|
-| [Incident Response Runbooks](docs/incident-response-runbooks.md) | WAN outages, Jira, SharePoint, Nextcloud and proxy troubleshooting |
-
-### Project Documentation
-
-- [Technical Project Index](docs/monitoring-project-index.md)
-
-The case studies distinguish previously implemented monitoring activities from proposed improvements and future lab validation.
-
-## Zabbix Configuration Examples
-
-### Dual WAN Monitoring Template
-
-[View Zabbix 7.4 Dual WAN Template](template_wan_dual_link_zabbix74.yaml)
-
-The sample template includes:
-
-- Primary WAN ICMP availability
-- Backup WAN ICMP availability
-- Primary and backup packet loss
-- Primary and backup network latency
-- Primary WAN failure alert
-- Backup WAN failure alert
-- Simultaneous WAN failure alert
-
-The template uses documentation-only IP addresses and host macros for reusability.
-
-**Validation status:** The YAML file is an example configuration. Import, trigger behavior, and operational compatibility have not yet been validated in a dedicated Zabbix lab.
+| Zabbix | Infrastructure and service monitoring |
+| Zabbix Proxy | Distributed monitoring |
+| Netdata | Real-time system performance monitoring |
+| Debian Linux | Monitoring server operating system |
+| PostgreSQL | Zabbix database |
+| Nginx | Zabbix web frontend |
+| Windows Server | Enterprise system monitoring |
+| Jira / Tomcat | Application availability monitoring |
+| SharePoint / IIS | Enterprise portal monitoring |
+| Nextcloud | Collaboration platform monitoring |
+| Cisco Networking | Network and WAN connectivity |
 
 ## Monitoring Architecture
 
-The monitoring design uses a centralized Zabbix platform with distributed proxies to collect data from different infrastructure segments.
+The monitoring architecture covers centralized and distributed monitoring components.
 
 ```mermaid
 flowchart TB
-    ZS["Central Zabbix Server"]
-    OP["Office Zabbix Proxy"]
-    DP["DMZ Zabbix Proxy"]
+    ADMIN["IT Operations Team"]
+    SERVER["Zabbix Server"]
+    DB["PostgreSQL"]
+    PROXY1["Zabbix Proxy - DMZ"]
+    PROXY2["Zabbix Proxy - Office"]
+
     WAN["Branch WAN Links"]
-    SRV["Windows & Linux Servers"]
-    APP["Enterprise Applications"]
-    NP["Netdata Parent"]
-    NA["Netdata Agents"]
+    JIRA["Jira / Tomcat"]
+    SP["SharePoint"]
+    NC["Nextcloud"]
 
-    OP --> ZS
-    DP --> ZS
+    NETDATA["Netdata Parent"]
+    AGENTS["Netdata Child Nodes"]
 
-    WAN --> OP
-    SRV --> OP
-    APP --> DP
+    ADMIN --> SERVER
+    SERVER --> DB
+    SERVER <--> PROXY1
+    SERVER <--> PROXY2
 
-    NA --> NP
+    SERVER --> WAN
+    PROXY1 --> JIRA
+    PROXY2 --> SP
+    SERVER --> NC
+
+    ADMIN --> NETDATA
+    AGENTS --> NETDATA
 ```
 
-This is a simplified conceptual diagram. It does not represent a production network topology or disclose internal infrastructure details.
+The diagram illustrates a logical monitoring architecture. Individual monitoring paths depend on host placement, proxy assignment, and connectivity.
 
-Detailed architecture documentation is available in:
+For more details:
 
-- [Enterprise Monitoring Architecture](docs/architecture.md)
-- [Zabbix Proxy Deployment](docs/zabbix-proxy-deployment.md)
-- [Netdata Parent-Agent Monitoring](docs/netdata-parent-agent-monitoring.md)
+[Monitoring Architecture](docs/architecture.md)
 
-## Project Roadmap
+## Key Monitoring Areas
 
-### Documentation — Completed
+### 1. Enterprise Network & WAN Monitoring
 
-- [x] Document enterprise monitoring architecture
-- [x] Document branch WAN monitoring design
-- [x] Add initial Zabbix 7.4 dual WAN template example
-- [x] Document Office and DMZ Zabbix Proxy deployments
-- [x] Document Jira and Tomcat monitoring
-- [x] Document detailed Jira Zabbix configuration
-- [x] Document SharePoint, IIS and SQL monitoring
-- [x] Document detailed SharePoint monitoring configuration
-- [x] Document Nextcloud monitoring
-- [x] Document detailed Nextcloud monitoring configuration
-- [x] Document Netdata Parent-Agent architecture
-- [x] Document monitoring dashboards and alerting design
-- [x] Add incident response runbooks
-- [x] Build technical project index
+Monitoring primary and backup WAN connectivity across branch offices.
 
-### Future Enhancements
+Key monitoring capabilities:
 
-- [ ] Add additional reusable Zabbix templates
-- [ ] Add detailed alert escalation workflows
-- [ ] Create sanitized monitoring dashboard examples
-- [ ] Add GitLab performance monitoring configuration examples
-- [ ] Expand technical troubleshooting documentation
-- [ ] Add lab-validated configuration files
+- ICMP availability checks
+- Primary and backup link monitoring
+- Packet loss and response time
+- Outage detection
+- Link availability dashboards
+- Automated notifications
+- Incident investigation
 
-### Lab Validation — Pending
+Documentation:
 
-- [ ] Prepare an isolated monitoring lab
-- [ ] Install and configure Zabbix components
-- [ ] Import and validate Zabbix templates
-- [ ] Verify monitoring items and triggers
-- [ ] Simulate WAN connectivity failures
-- [ ] Simulate application service failures
-- [ ] Validate Zabbix Proxy communication
-- [ ] Validate Netdata metrics streaming
-- [ ] Test alert notification workflows
-- [ ] Capture sanitized screenshots and test results
+[Branch WAN Monitoring](docs/branch-wan-monitoring.md)
+
+### 2. Jira & Tomcat Monitoring
+
+Monitoring application availability and supporting infrastructure.
+
+Key metrics and checks:
+
+- Jira service availability
+- Tomcat process and service status
+- HTTP availability and response time
+- CPU and memory utilization
+- Network traffic
+- Disk utilization
+- Application troubleshooting
+
+Documentation:
+
+- [Jira & Tomcat Monitoring](docs/jira-tomcat-monitoring.md)
+- [Jira Zabbix Configuration](docs/jira-zabbix-configuration.md)
+
+### 3. SharePoint Monitoring
+
+Monitoring enterprise portal availability and related services.
+
+Monitoring areas:
+
+- Portal HTTP availability
+- IIS service health
+- Windows Server resource utilization
+- Application response time
+- Supporting service dependencies
+- Performance and availability troubleshooting
+
+Documentation:
+
+- [SharePoint Portal Monitoring](docs/sharepoint-portal-monitoring.md)
+- [SharePoint Zabbix Configuration](docs/sharepoint-zabbix-configuration.md)
+
+### 4. Nextcloud Monitoring
+
+Monitoring a collaboration and file-sharing platform.
+
+Monitoring areas:
+
+- HTTPS endpoint availability
+- Apache service health
+- PHP application environment
+- Database availability
+- CPU, memory, and storage usage
+- Service troubleshooting
+
+Documentation:
+
+- [Nextcloud Service Monitoring](docs/nextcloud-service-monitoring.md)
+- [Nextcloud Zabbix Configuration](docs/nextcloud-zabbix-configuration.md)
+
+### 5. Netdata Performance Monitoring
+
+Using Netdata for infrastructure performance visibility.
+
+Key areas:
+
+- Centralized metrics streaming
+- Parent and child node architecture
+- Real-time system metrics
+- CPU and memory monitoring
+- Disk I/O and network utilization
+- System performance investigation
+
+Documentation:
+
+[Netdata Parent-Agent Monitoring](docs/netdata-parent-agent-monitoring.md)
+
+### 6. Distributed Monitoring with Zabbix Proxy
+
+Zabbix Proxy supports distributed collection and communication between monitored environments and the central Zabbix Server.
+
+Technical areas:
+
+- Proxy architecture
+- Active and passive communication concepts
+- Encrypted communication
+- Monitoring host assignment
+- Connectivity troubleshooting
+- Proxy health and operational checks
+
+Documentation:
+
+[Zabbix Proxy Deployment](docs/zabbix-proxy-deployment.md)
+
+## Dashboards, Alerting & Incident Response
+
+The operational monitoring workflow includes:
+
+1. Collect infrastructure and application metrics.
+2. Evaluate configured trigger conditions.
+3. Detect availability and performance issues.
+4. Generate monitoring events and notifications.
+5. Investigate incidents and service dependencies.
+6. Verify recovery and document findings.
+
+Related documentation:
+
+- [Monitoring Dashboards & Alerting](docs/monitoring-dashboards-alerting.md)
+- [Incident Response Runbooks](docs/incident-response-runbooks.md)
+
+## Monitoring Documentation
+
+| Document | Description |
+|---|---|
+| [Architecture](docs/architecture.md) | Monitoring platform architecture |
+| [Branch WAN Monitoring](docs/branch-wan-monitoring.md) | Primary and backup WAN connectivity |
+| [Jira & Tomcat](docs/jira-tomcat-monitoring.md) | Application and service monitoring |
+| [Jira Configuration](docs/jira-zabbix-configuration.md) | Zabbix configuration examples |
+| [SharePoint Monitoring](docs/sharepoint-portal-monitoring.md) | Enterprise portal availability |
+| [SharePoint Configuration](docs/sharepoint-zabbix-configuration.md) | Zabbix monitoring examples |
+| [Nextcloud Monitoring](docs/nextcloud-service-monitoring.md) | Collaboration service monitoring |
+| [Nextcloud Configuration](docs/nextcloud-zabbix-configuration.md) | Zabbix monitoring examples |
+| [Netdata Monitoring](docs/netdata-parent-agent-monitoring.md) | Centralized metrics streaming |
+| [Zabbix Proxy](docs/zabbix-proxy-deployment.md) | Distributed monitoring architecture |
+| [Dashboards & Alerting](docs/monitoring-dashboards-alerting.md) | Dashboards, triggers, and alerts |
+| [Incident Runbooks](docs/incident-response-runbooks.md) | Incident investigation procedures |
+| [Documentation Index](docs/monitoring-project-index.md) | Technical documentation navigation |
+
+## Configuration Examples
+
+### Branch WAN Monitoring
+
+The repository includes a Zabbix template example for monitoring primary and backup branch connectivity.
+
+[View WAN Monitoring Template](template_wan_dual_link_zabbix74.yaml)
+
+The template provides a reusable configuration reference for WAN availability monitoring.
+
+Configuration examples should be reviewed and adapted to the target Zabbix version and environment before operational use.
+
+## Operational Best Practices
+
+- Establish clear monitoring ownership.
+- Prioritize business-critical services.
+- Monitor both infrastructure and application availability.
+- Define meaningful triggers and severity levels.
+- Reduce unnecessary alert noise.
+- Document service dependencies.
+- Maintain incident response procedures.
+- Review monitoring coverage regularly.
+- Protect monitoring credentials and sensitive information.
 
 ## Security & Confidentiality
 
-This repository is intended for technical demonstration and professional portfolio purposes.
+Documentation and reusable configuration examples use anonymized infrastructure information.
 
-All examples use anonymized or illustrative information.
+Production credentials, authentication tokens, confidential network configurations, and sensitive organizational information are excluded from the public repository.
 
-Before publishing additional configuration files or screenshots:
+## Professional Context
 
-- Remove internal IP addresses and hostnames.
-- Exclude credentials, API keys and authentication secrets.
-- Remove customer and company-confidential information.
-- Use documentation-only addresses where appropriate.
-- Validate configuration examples in an isolated environment.
+This portfolio builds on enterprise IT infrastructure operations experience involving:
+
+- More than 1,000 users
+- 31 branch offices
+- Enterprise Windows and Linux systems
+- Network and WAN infrastructure
+- Business-critical application services
+- Monitoring, troubleshooting, and incident response
+
+The objective is to demonstrate infrastructure monitoring design, operational knowledge, and technical documentation practices relevant to IT Infrastructure Engineering, Systems Administration, and Monitoring Engineering.
 
 ## About
 
-This portfolio showcases experience in IT Infrastructure Engineering, enterprise monitoring, network operations, application availability, infrastructure troubleshooting, and service reliability.
-
-The project combines practical operational experience with technical documentation and reusable monitoring examples.
-
-Future updates will include lab-tested configurations, monitoring dashboards, troubleshooting evidence, and additional automation examples.
+A technical portfolio focused on enterprise infrastructure monitoring, service availability, network operations, Zabbix, Netdata, and operational troubleshooting.
