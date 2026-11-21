@@ -3,61 +3,141 @@
 
 ## Overview
 
-This portfolio documents enterprise infrastructure monitoring, service operations, and incident troubleshooting across a multi-site environment supporting 1,000+ users and 31 branches.
+This repository documents enterprise infrastructure monitoring, service availability, operational dashboards, and incident troubleshooting practices.
 
-The case studies cover network monitoring, distributed monitoring architecture, business-critical applications, operational dashboards, and incident response.
+The technical portfolio is based on infrastructure operations experience in a distributed enterprise environment supporting more than 1,000 users across 31 branch offices.
 
-All technical examples are anonymized. Lab validation is planned separately.
+The documentation covers Zabbix, Zabbix Proxy, Netdata, WAN connectivity, Windows and Linux infrastructure, and business-critical applications.
 
-## Architecture & Monitoring Infrastructure
+All configuration examples and infrastructure identifiers are anonymized.
 
-| Project | Technical Scope |
+## 1. Architecture & Monitoring Infrastructure
+
+| Document | Technical Scope |
 |---|---|
-| [Monitoring Architecture](architecture.md) | Zabbix Server, distributed proxies, Netdata, network segmentation |
-| [Zabbix Proxy Deployment](zabbix-proxy-deployment.md) | Active proxies, Debian 12, Office/DMZ, connectivity troubleshooting |
-| [Monitoring Dashboards & Alerting](monitoring-dashboards-alerting.md) | Operational dashboards, alert severity, monitoring metrics |
+| [Monitoring Architecture](architecture.md) | Central Zabbix Server, distributed proxies, network segmentation and Netdata |
+| [Zabbix Proxy Deployment](zabbix-proxy-deployment.md) | Active proxies, Debian 12, Office/DMZ monitoring and encrypted communication |
+| [Netdata Parent-Agent Monitoring](netdata-parent-agent-monitoring.md) | Centralized metrics streaming, Linux resource monitoring and GitLab performance visibility |
+| [Monitoring Dashboards & Alerting](monitoring-dashboards-alerting.md) | Operational dashboards, monitoring metrics, trigger severity and notifications |
 
-## Network Monitoring
+## 2. Network & WAN Monitoring
 
-| Project | Technical Scope |
+| Document | Technical Scope |
 |---|---|
-| [Branch WAN Monitoring](branch-wan-monitoring.md) | Primary/backup WAN links, ICMP checks, packet loss, latency, disaster alerts |
+| [Branch WAN Monitoring](branch-wan-monitoring.md) | Primary and backup WAN links, ICMP, packet loss, latency and outage detection |
 
-## Enterprise Application Monitoring
+### Key Topics
 
-| Project | Technical Scope |
+- Branch connectivity monitoring
+- Primary and backup link availability
+- Zabbix host macros
+- ICMP monitoring items
+- Link failure triggers
+- Combined outage detection
+- Network incident investigation
+
+## 3. Enterprise Application Monitoring
+
+| Document | Technical Scope |
 |---|---|
-| [Jira & Tomcat Monitoring](jira-tomcat-monitoring.md) | Application availability, Tomcat services, performance metrics, HTTPS |
-| [SharePoint Portal Monitoring](sharepoint-portal-monitoring.md) | IIS, web availability, authentication, SQL Server dependencies |
-| [Nextcloud Monitoring](nextcloud-service-monitoring.md) | Web availability, Redis, cron jobs, database and LDAP dependencies |
+| [Jira & Tomcat Monitoring](jira-tomcat-monitoring.md) | Jira availability, Windows services, Tomcat performance and HTTPS monitoring |
+| [Jira Zabbix Configuration](jira-zabbix-configuration.md) | Monitoring items, web scenarios and trigger expressions |
+| [SharePoint Portal Monitoring](sharepoint-portal-monitoring.md) | IIS, web availability, NTLM authentication and SQL Server dependencies |
+| [SharePoint Zabbix Configuration](sharepoint-zabbix-configuration.md) | Web scenarios, service monitoring and application performance |
+| [Nextcloud Service Monitoring](nextcloud-service-monitoring.md) | Nextcloud availability, Apache, PHP, Redis, MariaDB, Cron and LDAP |
+| [Nextcloud Zabbix Configuration](nextcloud-zabbix-configuration.md) | Monitoring items, HTTPS checks, application status and service dependencies |
 
-## IT Operations & Incident Management
+## 4. IT Operations & Incident Management
 
-| Project | Technical Scope |
+| Document | Technical Scope |
 |---|---|
-| [Incident Response Runbooks](incident-response-runbooks.md) | WAN outages, Jira, SharePoint, Nextcloud, Zabbix Proxy troubleshooting |
+| [Incident Response Runbooks](incident-response-runbooks.md) | WAN, Jira, SharePoint, Nextcloud and Zabbix Proxy troubleshooting |
+| [Monitoring Dashboards & Alerting](monitoring-dashboards-alerting.md) | Event classification, notifications, escalation and incident response |
 
-## Configuration Examples
+### Operational Workflow
 
-- [Zabbix 7.4 Dual WAN Template](../template_wan_dual_link_zabbix74.yaml)
+```mermaid id="hrvef9"
+flowchart TD
+    A["Infrastructure & Application Monitoring"]
+    B["Data Collection"]
+    C["Trigger Evaluation"]
+    D["Problem Detection"]
+    E["Notification & Escalation"]
+    F["Incident Investigation"]
+    G["Corrective Action"]
+    H["Recovery Verification"]
+    I["Incident Documentation"]
 
-This YAML file is an example configuration awaiting import and functional validation in a dedicated lab.
+    A --> B --> C --> D --> E --> F --> G --> H --> I
+```
 
-## Implementation & Validation
+## 5. Configuration Examples
 
-The repository documents practical engineering experience alongside proposed improvements.
+### Dual-Link WAN Monitoring Template
 
-The following work remains planned:
+[Zabbix 7.4 Dual WAN Template](../template_wan_dual_link_zabbix74.yaml)
 
-- Reproduce the monitoring environment in a lab
-- Import and validate Zabbix templates
-- Simulate infrastructure and application incidents
-- Verify trigger behavior and alert workflows
-- Add anonymized screenshots and test evidence
-- Expand reusable configuration examples
+The template provides an example configuration for monitoring primary and backup branch WAN connectivity.
 
-## Security & Confidentiality
+Key configuration concepts:
 
-No real infrastructure addresses, production credentials, internal hostnames, or confidential company configurations are intentionally published.
+- Host macros
+- ICMP availability items
+- Packet loss metrics
+- Response-time metrics
+- Primary WAN failure detection
+- Backup WAN failure detection
+- Combined WAN outage detection
 
-Examples must be reviewed before publication to ensure sensitive details are removed.
+Configuration examples should be reviewed for compatibility with the target Zabbix environment before operational use.
+
+## 6. Technology Stack
+
+| Technology | Area |
+|---|---|
+| Zabbix 7.4 | Infrastructure and service monitoring |
+| Zabbix Proxy | Distributed data collection |
+| Netdata | System performance monitoring |
+| Debian Linux | Monitoring server platform |
+| PostgreSQL | Monitoring database |
+| Nginx | Web frontend |
+| Windows Server | Enterprise application infrastructure |
+| Jira / Tomcat | Application monitoring |
+| SharePoint / IIS | Enterprise portal monitoring |
+| Microsoft SQL Server | Database dependency monitoring |
+| Nextcloud | Collaboration service monitoring |
+| MariaDB / Redis | Application dependencies |
+| Cisco Networking | Network and WAN operations |
+
+## 7. Engineering Focus
+
+The portfolio emphasizes:
+
+- Enterprise infrastructure operations
+- Monitoring architecture
+- Distributed data collection
+- Service availability
+- Network connectivity
+- Application dependencies
+- Performance investigation
+- Alerting and escalation
+- Incident response
+- Technical documentation
+
+## 8. Security & Confidentiality
+
+- Infrastructure identifiers are anonymized.
+- Production credentials and authentication secrets are excluded.
+- Internal network details are not intentionally published.
+- Example configurations use generic hostnames and addresses.
+- Sensitive logs and organizational information must not be committed.
+- Public documentation should be reviewed for confidentiality before publication.
+
+## 9. Repository Navigation
+
+[Return to Main README](../README.md)
+
+### External References
+
+- [Zabbix Documentation](https://www.zabbix.com/documentation/current/)
+- [Netdata Documentation](https://learn.netdata.cloud/)
