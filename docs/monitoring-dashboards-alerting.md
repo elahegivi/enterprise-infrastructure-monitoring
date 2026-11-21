@@ -3,49 +3,61 @@
 
 ## 1. Overview
 
-This case study describes the design of operational monitoring dashboards and alerting workflows for a distributed enterprise environment.
+This document describes operational monitoring dashboards, alerting strategies, and incident response workflows for a distributed enterprise IT environment.
 
-The monitoring approach focuses on four areas:
+The monitoring approach covers:
 
-- Network and WAN connectivity
-- Server and infrastructure health
-- Business-critical application availability
+- Branch WAN connectivity
+- Windows and Linux infrastructure
+- Jira and Tomcat application monitoring
+- SharePoint portal availability
+- Nextcloud service monitoring
 - Incident detection and response
 
-The primary monitoring technologies are Zabbix and Netdata.
+The primary technologies are Zabbix and Netdata.
 
-All examples are anonymized. Dashboard configurations and alerting scenarios will be validated in a dedicated lab.
+The design draws on enterprise infrastructure monitoring experience in an environment supporting more than 1,000 users across 31 branch offices.
+
+Infrastructure identifiers and examples are anonymized.
 
 ## 2. Dashboard Design Principles
 
-Effective monitoring dashboards should help engineers answer three questions:
+An operational dashboard should answer:
 
 1. What is currently unavailable or degraded?
-2. Which infrastructure component or service is affected?
+2. Which service or infrastructure component is affected?
 3. What requires immediate investigation?
 
-Dashboards should prioritize operational relevance rather than displaying every available metric.
+Effective dashboards prioritize:
+
+- Business-critical service availability
+- Clear problem indicators
+- Relevant performance metrics
+- Historical trends
+- Appropriate alert severity
+- Actionable information
 
 ## 3. Network Operations Dashboard
 
-### Purpose
+### Objective
 
-Provide visibility into the connectivity status of enterprise branches and their primary and backup WAN connections.
+Provide centralized visibility into branch connectivity and primary/backup WAN availability.
 
 ### Recommended Widgets
 
-| Widget | Description |
+| Widget | Purpose |
 |---|---|
 | Branch Availability | Overall connectivity status |
-| Primary WAN Status | Availability of primary links |
-| Backup WAN Status | Availability of backup links |
-| Active Network Problems | Current connectivity incidents |
+| Primary WAN Status | Primary link availability |
+| Backup WAN Status | Backup link availability |
+| Active Problems | Current connectivity incidents |
 | Packet Loss | ICMP packet loss trends |
-| Network Latency | ICMP response time trends |
+| Network Latency | Response-time trends |
+| Recent Events | Connectivity incident history |
 
-### Alert Severity
+### WAN Alert Severity
 
-| Condition | Proposed Severity |
+| Condition | Severity |
 |---|---|
 | Primary WAN unavailable | High |
 | Backup WAN unavailable | Warning |
@@ -53,154 +65,286 @@ Provide visibility into the connectivity status of enterprise branches and their
 | Elevated packet loss | Warning |
 | High latency | Warning |
 
-Thresholds must be calibrated according to normal network behavior.
+Alert severity should reflect operational requirements and business impact.
+
+Trigger dependencies can reduce duplicate notifications when both WAN links become unavailable.
 
 ## 4. Server Infrastructure Dashboard
 
-### Purpose
+### Objective
 
-Monitor the availability and resource consumption of Windows and Linux servers.
+Monitor the availability and resource utilization of Windows and Linux servers.
 
 ### Key Metrics
 
 - Host availability
 - CPU utilization
-- Memory utilization
-- Disk space utilization
+- Memory consumption
+- Disk capacity
+- Disk I/O
 - Network interface traffic
-- Critical operating system services
-- Monitoring agent availability
+- Operating system service availability
+- Zabbix Agent availability
 
 ### Operational Use
 
-The dashboard supports investigation of resource exhaustion, service failures, and infrastructure degradation.
+The dashboard supports investigation of:
+
+- Server outages
+- Resource exhaustion
+- Disk capacity problems
+- Service interruptions
+- Performance degradation
+- Monitoring communication failures
+
+Historical metrics help distinguish temporary spikes from sustained resource pressure.
 
 ## 5. Jira & Tomcat Dashboard
 
-### Purpose
+### Objective
 
-Monitor the availability and health of the Jira application and its supporting Tomcat environment.
+Monitor Jira availability and supporting Windows Server and Tomcat components.
 
-### Key Monitoring Areas
+### Monitoring Coverage
 
-- ICMP reachability
-- HTTP/HTTPS availability
-- HTTP response time
-- Tomcat process and service status
-- CPU and memory utilization
-- Disk utilization
-- Network traffic
+| Layer | Metrics |
+|---|---|
+| Network | ICMP availability and latency |
+| Web | HTTPS availability and response time |
+| Application | Jira Windows service state |
+| Runtime | Tomcat process and resource utilization |
+| Operating System | CPU, memory, disk and network |
+| Certificates | TLS certificate expiration |
 
-### Troubleshooting Approach
+### Incident Investigation
 
-If Jira becomes unavailable:
-
-1. Verify host reachability.
-2. Check HTTP/HTTPS availability.
-3. Review the Tomcat process or service status.
-4. Examine CPU, memory, and disk resources.
-5. Review relevant application logs.
-6. Investigate dependencies where necessary.
+1. Confirm host connectivity.
+2. Review HTTPS availability.
+3. Check Jira Windows service status.
+4. Inspect Tomcat process metrics.
+5. Review operating system resource utilization.
+6. Investigate database and application dependencies.
+7. Verify recovery.
 
 ## 6. SharePoint Portal Dashboard
 
-### Purpose
+### Objective
 
-Provide operational visibility into SharePoint portal availability and supporting infrastructure.
+Provide operational visibility into SharePoint availability, IIS, and SQL Server dependencies.
 
 ### Monitoring Areas
 
-- Web endpoint availability
-- HTTP response time
-- IIS application and service health
+- HTTP/HTTPS availability
+- Authenticated web scenario checks
+- Application response time
+- IIS service availability
 - Windows Server resource utilization
-- SQL Server dependencies
-- Storage and disk performance
+- SQL Server service health
+- Database-related performance indicators
 
-The exact SQL and IIS checks must be validated against the target SharePoint environment.
+### Operational Analysis
+
+Portal performance issues may originate from IIS, server resource pressure, database dependencies, authentication, or network connectivity.
+
+Correlating web response time with infrastructure metrics supports structured troubleshooting.
 
 ## 7. Nextcloud Dashboard
 
-### Purpose
+### Objective
 
-Monitor Nextcloud service health and its underlying infrastructure.
+Monitor Nextcloud availability and supporting Linux services.
 
 ### Monitoring Areas
 
-- Web availability and response time
-- Server CPU, memory, and disk utilization
-- Database availability
-- Redis service health
-- Background job and cron execution
-- Application logs and operational errors
+- HTTPS availability and response time
+- Application status endpoint
+- Linux CPU and memory utilization
+- Filesystem capacity
+- Apache and PHP service health
+- MariaDB availability
+- Redis connectivity
+- Cron background jobs
+- LDAP dependencies
+- TLS certificate expiration
 
-The monitoring configuration will be reproduced and validated in a lab environment.
+These monitoring areas provide a reference for layered Nextcloud observability.
 
-## 8. Alerting Strategy
+## 8. Netdata Performance Monitoring
 
-### Event Severity
+Netdata complements centralized Zabbix monitoring through detailed system performance metrics.
 
-Monitoring events are classified according to their operational impact.
+### Key Metrics
 
-A proposed severity model:
+- CPU utilization
+- Memory consumption
+- Disk I/O
+- Network traffic
+- System performance trends
+- Process resource utilization
 
-- Information: Informational events
-- Warning: Early indications of degradation
-- Average: Service conditions requiring investigation
-- High: Significant service or infrastructure failures
-- Disaster: Critical outages affecting business operations
+### Platform Responsibilities
+
+| Platform | Primary Role |
+|---|---|
+| Zabbix | Monitoring configuration, triggers, alerts and dashboards |
+| Netdata | Detailed system performance visibility and analysis |
+
+A Netdata Parent-Child architecture supports centralized metric streaming from monitored nodes.
+
+## 9. Alerting Strategy
+
+### Severity Classification
+
+| Severity | Meaning |
+|---|---|
+| Information | Informational event |
+| Warning | Early degradation |
+| Average | Condition requiring investigation |
+| High | Significant service or infrastructure failure |
+| Disaster | Critical business-impacting outage |
 
 ### Alert Quality
 
-Effective alerts should:
+Effective alerts should provide:
 
-- Identify the affected host or service
-- Explain the detected condition
-- Include relevant monitoring values
-- Avoid unnecessary duplicate notifications
-- Provide a clear path for investigation
+- Affected host or service
+- Detected condition
+- Relevant monitoring values
+- Severity
+- Event timestamp
+- Clear investigation context
 
-## 9. Incident Response Workflow
+### Alert Noise Reduction
+
+Recommended techniques:
+
+- Meaningful trigger thresholds
+- Trigger dependencies
+- Appropriate recovery expressions
+- Maintenance windows
+- Escalation policies
+- Periodic alert review
+
+## 10. Notification and Escalation
+
+A typical notification workflow includes:
+
+1. Zabbix detects an abnormal condition.
+2. A trigger generates a problem event.
+3. Event severity is evaluated.
+4. Configured actions determine notification recipients.
+5. Engineers investigate the problem.
+6. Recovery is confirmed.
+7. The incident is documented.
+
+### Example Escalation Scenarios
+
+| Condition | Operational Response |
+|---|---|
+| Primary WAN unavailable | Investigate provider and routing |
+| Backup WAN unavailable | Review backup connection |
+| Both WAN links unavailable | Prioritize complete branch outage |
+| Jira unavailable | Investigate application dependencies |
+| SharePoint unavailable | Check IIS and SQL Server |
+| Disk capacity critical | Investigate storage utilization |
+
+## 11. Incident Response Workflow
 
 ```mermaid
 flowchart TD
-    A[Monitoring detects an issue]
-    B[Generate alert]
-    C[Assess severity and impact]
-    D[Investigate metrics and logs]
-    E[Identify root cause]
-    F[Apply corrective action]
-    G[Verify service recovery]
-    H[Document incident]
+    A["Monitoring Data Collection"]
+    B["Problem Detection"]
+    C["Alert Generation"]
+    D["Impact Assessment"]
+    E["Incident Investigation"]
+    F["Corrective Action"]
+    G["Recovery Verification"]
+    H["Incident Documentation"]
+    I["Monitoring Improvement"]
 
-    A --> B --> C --> D --> E --> F --> G --> H
+    A --> B --> C --> D --> E --> F --> G --> H --> I
 ```
 
-## 10. Reporting and Continuous Improvement
+### Investigation Principles
+
+- Verify the alert before making changes.
+- Identify the affected service.
+- Review relevant infrastructure dependencies.
+- Compare current metrics with historical trends.
+- Investigate logs and monitoring events.
+- Apply approved corrective procedures.
+- Verify recovery.
+- Document findings.
+
+## 12. Monitoring Reports
 
 Monitoring data can support:
 
 - Availability reporting
 - Incident trend analysis
-- Capacity planning
-- Identification of recurring faults
-- Review of alert thresholds
-- Improvement of troubleshooting procedures
+- WAN reliability reviews
+- Server capacity planning
+- Application performance analysis
+- Identification of recurring problems
+- Review of monitoring thresholds
 
-Reports should distinguish observed data from assumptions and estimated impact.
+Reports should distinguish observed measurements from estimates and assumptions.
 
-## 11. Future Lab Validation
+## 13. Operational Verification Checklist
 
-- [ ] Build a network operations dashboard
-- [ ] Build server monitoring dashboards
-- [ ] Create application-specific dashboards
-- [ ] Validate trigger severities and thresholds
-- [ ] Test notification workflows
-- [ ] Capture anonymized screenshots
-- [ ] Document incident response test cases
+### Dashboards
 
-## 12. Lessons Learned
+- [ ] Review critical service visibility
+- [ ] Confirm branch connectivity indicators
+- [ ] Verify application monitoring widgets
+- [ ] Check server resource graphs
+- [ ] Review active problems
 
-Operational monitoring is most valuable when infrastructure metrics are connected to service impact.
+### Alerting
 
-Clear dashboards, meaningful alerts, and consistent incident response procedures help engineering teams identify problems and investigate them systematically.
+- [ ] Review trigger thresholds
+- [ ] Confirm severity classification
+- [ ] Verify notification rules
+- [ ] Review trigger dependencies
+- [ ] Confirm escalation responsibilities
+
+### Incident Response
+
+- [ ] Review investigation procedures
+- [ ] Verify service dependency information
+- [ ] Confirm recovery checks
+- [ ] Review incident documentation
+
+### Reporting
+
+- [ ] Review historical monitoring data
+- [ ] Check availability trends
+- [ ] Analyze recurring incidents
+- [ ] Review capacity-related metrics
+
+## 14. Monitoring Best Practices
+
+- Prioritize business-critical services.
+- Use standardized templates.
+- Define meaningful alert severity.
+- Monitor applications separately from host availability.
+- Correlate infrastructure and application metrics.
+- Maintain troubleshooting documentation.
+- Protect monitoring credentials.
+- Review dashboards regularly.
+- Improve alerting based on operational experience.
+
+## 15. Related Documentation
+
+- [Monitoring Architecture](architecture.md)
+- [Branch WAN Monitoring](branch-wan-monitoring.md)
+- [Jira & Tomcat Monitoring](jira-tomcat-monitoring.md)
+- [SharePoint Portal Monitoring](sharepoint-portal-monitoring.md)
+- [Nextcloud Service Monitoring](nextcloud-service-monitoring.md)
+- [Netdata Parent-Agent Monitoring](netdata-parent-agent-monitoring.md)
+- [Incident Response Runbooks](incident-response-runbooks.md)
+
+## 16. References
+
+- [Zabbix Documentation](https://www.zabbix.com/documentation/current/)
+- [Netdata Documentation](https://learn.netdata.cloud/)
