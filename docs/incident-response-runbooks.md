@@ -1,186 +1,465 @@
 
 # Enterprise IT Incident Response Runbooks
 
-## Overview
+## 1. Overview
 
-This document provides operational troubleshooting procedures for common enterprise infrastructure and application incidents.
+This document provides structured incident investigation and recovery procedures for enterprise infrastructure, network connectivity, monitoring systems, and business-critical applications.
 
-The scenarios are based on practical infrastructure monitoring and troubleshooting experience.
+The scenarios are based on practical infrastructure operations and troubleshooting experience in a distributed enterprise environment.
 
-All examples are anonymized. The procedures are reference workflows and require adaptation and validation before use in production.
+The runbooks cover:
 
-## 1. Branch WAN Connectivity Failure
+- Branch WAN connectivity failures
+- Jira and Tomcat service incidents
+- SharePoint portal availability
+- Nextcloud service degradation
+- Zabbix Proxy communication failures
+- Incident documentation and post-incident review
+
+All infrastructure examples are anonymized.
+
+## 2. Incident Response Lifecycle
+
+```mermaid
+flowchart TD
+    A["Monitoring Alert"]
+    B["Initial Assessment"]
+    C["Severity and Impact Classification"]
+    D["Incident Investigation"]
+    E["Identify Root Cause"]
+    F["Corrective Action"]
+    G["Recovery Verification"]
+    H["Incident Documentation"]
+    I["Post-Incident Review"]
+
+    A --> B --> C --> D --> E --> F --> G --> H --> I
+```
+
+### General Response Principles
+
+1. Confirm the alert and affected service.
+2. Determine operational and business impact.
+3. Identify the affected infrastructure components.
+4. Review monitoring data and supporting logs.
+5. Investigate dependencies before applying corrective actions.
+6. Follow approved operational and change procedures.
+7. Verify recovery through monitoring and functional checks.
+8. Document findings and preventive recommendations.
+
+## 3. Runbook — Branch WAN Connectivity Failure
 
 ### Symptoms
 
-- Primary or backup WAN link reported as unavailable
+- Primary WAN unavailable
+- Backup WAN unavailable
 - Increased ICMP packet loss
 - High network latency
-- Branch users reporting connectivity problems
+- VPN or tunnel connectivity failure
+- Branch users unable to access corporate services
 
-### Investigation
+### Investigation Procedure
 
-1. Identify the affected branch and WAN provider.
-2. Check the latest Zabbix availability data.
-3. Verify ICMP connectivity from the assigned Zabbix proxy.
-4. Compare primary and backup link status.
-5. Review router interfaces and routing information.
-6. Check VPN or tunnel connectivity where applicable.
-7. Verify whether the issue affects one link or both.
+1. Identify the affected branch.
+2. Review the Zabbix problem event.
+3. Check the primary WAN status.
+4. Check the backup WAN status.
+5. Verify ICMP connectivity from the assigned Zabbix Proxy.
+6. Review router interface status.
+7. Inspect routing information.
+8. Check VPN or tunnel connectivity.
+9. Determine whether the issue affects one provider or both.
+10. Escalate provider-side failures when necessary.
 
-### Recovery
+### Example Network Commands
 
-- Escalate provider-side failures to the relevant ISP.
-- Restore connectivity through the approved backup path when supported.
-- Verify connectivity to required corporate services.
-- Confirm that monitoring data and alerts return to normal.
+Cisco IOS / IOS XE:
+
+```text
+show ip interface brief
+show interfaces
+show ip route
+show ip sla statistics
+show track
+```
+
+For relevant tunnel configurations:
+
+```text
+show interfaces tunnel
+show running-config interface Tunnel0
+```
+
+Replace `Tunnel0` with the appropriate interface name.
+
+### Recovery Verification
+
+- Confirm primary or backup connectivity.
+- Verify routing to required corporate services.
+- Review Zabbix ICMP metrics.
+- Check packet loss and response time.
+- Confirm branch application accessibility.
+- Document the incident.
 
 ### Escalation
 
-Both WAN links unavailable: Disaster severity.
+| Condition | Severity |
+|---|---|
+| Primary WAN unavailable | High |
+| Backup WAN unavailable | Warning |
+| Both WAN links unavailable | Disaster |
 
-## 2. Jira / Tomcat Service Unavailable
+Severity should reflect actual operational impact.
+
+## 4. Runbook — Jira / Tomcat Service Unavailable
 
 ### Symptoms
 
 - Jira web interface inaccessible
-- HTTP monitoring check fails
-- Tomcat process or service is stopped
-- High application response time
+- HTTPS monitoring failure
+- Jira Windows service stopped
+- Tomcat process unavailable
+- Elevated response time
+- Application errors
 
-### Investigation
+### Investigation Procedure
 
-1. Verify server network reachability.
-2. Check HTTP/HTTPS endpoint availability.
-3. Review Tomcat service status.
-4. Inspect server CPU and memory usage.
-5. Check available disk space.
-6. Review Tomcat and Jira application logs.
-7. Examine database connectivity when indicated by logs.
+1. Verify server network connectivity.
+2. Check Jira HTTPS availability.
+3. Review Zabbix web scenario results.
+4. Inspect the Jira Windows service.
+5. Check Tomcat process availability.
+6. Review CPU and memory utilization.
+7. Check disk capacity.
+8. Inspect Windows and application logs.
+9. Review database availability.
+10. Determine the most likely failure source.
 
-### Recovery
+### Windows Service Investigation
 
-- Restore a stopped service only after checking the cause and following the approved change procedure.
-- Resolve resource or dependency problems.
-- Verify Jira login and essential application functionality.
-- Confirm monitoring recovery.
+Example PowerShell:
 
-### Escalation
+```powershell
+Get-Service | Where-Object {
+    $_.DisplayName -match "Jira|Tomcat"
+}
+```
 
-Escalate to application or database administrators when troubleshooting identifies application-level or database-related failures.
+Review relevant processes:
 
-## 3. SharePoint Portal Unavailable
-
-### Symptoms
-
-- SharePoint portal inaccessible
-- HTTP availability checks fail
-- Users report login errors
-- Portal response times increase
-
-### Investigation
-
-1. Check server reachability.
-2. Verify HTTP/HTTPS availability.
-3. Review IIS application pools and related services.
-4. Check Windows event logs.
-5. Review CPU, memory, and disk utilization.
-6. Check relevant authentication and SQL Server dependencies.
-7. Determine whether the issue affects one service or multiple components.
+```powershell
+Get-Process | Where-Object {
+    $_.ProcessName -match "java|tomcat"
+}
+```
 
 ### Recovery
 
-- Apply corrective actions according to the identified cause.
-- Coordinate application pool or service restarts through approved procedures.
-- Verify authentication and portal functionality.
-- Confirm monitoring status returns to normal.
+- Resolve identified infrastructure or service issues.
+- Coordinate service restarts through approved procedures.
+- Verify Jira HTTPS availability.
+- Confirm user-facing application functionality.
+- Review monitoring metrics after recovery.
 
 ### Escalation
 
-Escalate to SharePoint, Windows, or SQL Server specialists depending on the affected component.
+Escalate application-specific issues to the application team and database-related failures to the appropriate database administrators.
 
-## 4. Nextcloud Service Degradation
+## 5. Runbook — SharePoint Portal Unavailable
 
 ### Symptoms
 
-- Nextcloud unavailable or slow
+- Portal inaccessible
+- HTTP/HTTPS failure
+- NTLM authentication errors
+- IIS-related service failure
+- Elevated response time
+- SQL Server connectivity problems
+
+### Investigation Procedure
+
+1. Check SharePoint server availability.
+2. Review the Zabbix web scenario.
+3. Confirm expected HTTP response codes.
+4. Investigate authentication behavior.
+5. Review IIS-related services.
+6. Inspect application pools where appropriate.
+7. Check Windows Server resources.
+8. Review SQL Server availability.
+9. Inspect relevant Windows and application logs.
+10. Determine whether the incident originates from IIS, SharePoint, SQL Server, or infrastructure.
+
+### Example PowerShell Commands
+
+Check IIS service:
+
+```powershell
+Get-Service W3SVC
+```
+
+Review IIS application pools using WebAdministration:
+
+```powershell
+Import-Module WebAdministration
+Get-ChildItem IIS:\AppPools
+```
+
+Review SQL-related Windows services:
+
+```powershell
+Get-Service | Where-Object {
+    $_.Name -match "MSSQL|SQL"
+}
+```
+
+### Recovery Verification
+
+- Confirm portal accessibility.
+- Verify authentication.
+- Review response time.
+- Confirm IIS service health.
+- Verify SQL Server connectivity.
+- Confirm Zabbix alerts have recovered.
+
+### Escalation
+
+Escalate to SharePoint, Windows Server, IIS, or SQL Server specialists according to the affected component.
+
+## 6. Runbook — Nextcloud Service Degradation
+
+### Symptoms
+
+- Nextcloud inaccessible
+- Slow HTTPS response
 - Login failures
+- Database connectivity errors
+- Redis failures
 - Background job delays
-- Database or Redis errors
+- Filesystem capacity problems
 
-### Investigation
+### Investigation Procedure
 
-1. Verify HTTP/HTTPS endpoint availability.
-2. Check server CPU, memory, and disk utilization.
-3. Review web server and PHP service health.
-4. Examine Nextcloud application logs.
-5. Check database availability.
-6. Verify Redis service health.
-7. Review scheduled background jobs.
-8. Investigate AD/LDAP authentication when login failures occur.
+1. Verify Linux host connectivity.
+2. Check the HTTPS endpoint.
+3. Review the Nextcloud status endpoint.
+4. Inspect Apache service health.
+5. Review PHP-related errors.
+6. Check MariaDB service availability.
+7. Inspect Redis connectivity.
+8. Review filesystem capacity.
+9. Examine background job execution.
+10. Investigate Active Directory / LDAP dependencies when authentication is affected.
 
-### Recovery
+### Example Linux Commands
 
-- Address confirmed infrastructure or service failures.
-- Restore dependent services using approved procedures.
-- Verify user login and file access.
-- Confirm that background processing and monitoring recover.
+Check services:
 
-## 5. Zabbix Proxy Communication Failure
+```bash
+sudo systemctl status apache2
+sudo systemctl status mariadb
+sudo systemctl status redis-server
+```
+
+Inspect storage:
+
+```bash
+df -h
+```
+
+Inspect memory:
+
+```bash
+free -h
+```
+
+Review recent service logs:
+
+```bash
+sudo journalctl -u apache2 -n 100 --no-pager
+```
+
+### Application Status
+
+Example endpoint:
+
+```text
+https://nextcloud.example.com/status.php
+```
+
+Review the application status and maintenance state.
+
+### Recovery Verification
+
+- Confirm HTTPS availability.
+- Verify application status.
+- Check user authentication.
+- Confirm file access.
+- Review database and Redis availability.
+- Check background job processing.
+- Verify monitoring recovery.
+
+## 7. Runbook — Zabbix Proxy Communication Failure
 
 ### Symptoms
 
 - Monitoring data becomes stale
+- Multiple hosts stop reporting
 - Proxy communication errors
-- Multiple hosts stop reporting metrics
+- Proxy configuration synchronization problems
+- Delayed monitoring data collection
 
-### Investigation
+### Investigation Procedure
 
-1. Check proxy host availability.
-2. Verify the Zabbix proxy service status.
+1. Verify the proxy host is reachable.
+2. Check Zabbix Proxy service status.
 3. Review proxy logs.
-4. Check network connectivity to the central Zabbix server.
-5. Inspect firewall permissions.
-6. Verify proxy hostname and server configuration.
-7. Check the proxy database and local resource utilization.
+4. Verify central server connectivity.
+5. Inspect routing and firewall permissions.
+6. Confirm proxy hostname configuration.
+7. Review TLS/PSK configuration.
+8. Inspect proxy database availability.
+9. Check proxy resource utilization.
+10. Confirm the proxy's status in the Zabbix frontend.
 
-### Recovery
+### Example Linux Commands
 
-- Resolve connectivity or configuration problems.
-- Restart services only when justified.
-- Verify that proxy communication resumes.
-- Confirm new monitoring data arrives.
+Check service:
 
-## 6. Incident Documentation
+```bash
+sudo systemctl status zabbix-proxy
+```
 
-Each incident record should contain:
+Review logs:
+
+```bash
+sudo journalctl -u zabbix-proxy -n 100 --no-pager
+```
+
+Check central server connectivity:
+
+```bash
+nc -vz zabbix.example.test 10051
+```
+
+Inspect proxy configuration:
+
+```bash
+sudo grep -E '^(Server|Hostname|TLSConnect|TLSPSKIdentity)=' /etc/zabbix/zabbix_proxy.conf
+```
+
+Avoid displaying secret values or private key material in shared diagnostic output.
+
+### Recovery Verification
+
+- Confirm proxy communication.
+- Verify configuration synchronization.
+- Check monitored host availability.
+- Confirm new values appear in Latest data.
+- Review buffered data and collection delays.
+- Verify monitoring alerts return to the expected state.
+
+## 8. Incident Severity and Escalation
+
+| Severity | Description | Example |
+|---|---|---|
+| Information | Non-critical operational event | Informational status change |
+| Warning | Early degradation | Backup WAN failure |
+| Average | Service condition requiring investigation | Elevated application response time |
+| High | Significant service failure | Jira application unavailable |
+| Disaster | Critical business outage | Both branch WAN links unavailable |
+
+Severity classification should consider:
+
+- Number of affected users
+- Service criticality
+- Business impact
+- Available redundancy
+- Duration
+- Recovery requirements
+
+## 9. Incident Documentation
+
+Each incident record should capture:
 
 | Field | Description |
 |---|---|
 | Incident ID | Unique tracking identifier |
-| Start time | When the issue was detected |
-| Affected service | Application, server, or network |
-| Severity | Business and operational impact |
-| Symptoms | Observed errors and alerts |
-| Investigation | Checks performed and evidence collected |
-| Root cause | Confirmed cause, if identified |
-| Corrective action | Steps taken to restore service |
-| Recovery time | Confirmed restoration timestamp |
-| Follow-up | Preventive actions and improvements |
+| Start Time | Detection timestamp |
+| Affected Service | Application, network, or infrastructure |
+| Severity | Operational and business impact |
+| Symptoms | Observed alerts and errors |
+| Investigation | Diagnostic steps and evidence |
+| Root Cause | Confirmed cause, if identified |
+| Corrective Action | Steps taken to restore service |
+| Recovery Time | Confirmed restoration timestamp |
+| Follow-up | Preventive recommendations |
 
-## 7. Post-Incident Review
+### Example Incident Summary
+
+```text
+Incident ID: INC-EXAMPLE-001
+
+Affected Service: Branch WAN Connectivity
+
+Severity: High
+
+Detection:
+Primary WAN monitoring target became unreachable.
+
+Investigation:
+Reviewed Zabbix ICMP data, router interfaces,
+routing information, and provider connectivity.
+
+Corrective Action:
+Followed approved network recovery procedures.
+
+Recovery Verification:
+Confirmed monitoring target reachability and
+application access.
+
+Follow-up:
+Review recurring connection failures and
+provider escalation procedures.
+```
+
+This is an illustrative incident record.
+
+## 10. Post-Incident Review
 
 After service restoration:
 
 1. Establish the incident timeline.
-2. Review alerts, logs, and relevant metrics.
-3. Document the confirmed root cause or remaining uncertainty.
-4. Identify opportunities to improve detection.
-5. Review preventive actions and responsible teams.
-6. Update monitoring rules and runbooks when necessary.
+2. Review monitoring events and logs.
+3. Identify the confirmed root cause or unresolved factors.
+4. Evaluate alert quality and detection timing.
+5. Review recovery procedures.
+6. Identify recurring failure patterns.
+7. Assign preventive actions.
+8. Update monitoring configuration and runbooks where appropriate.
 
-## Validation Status
+## 11. Operational Best Practices
 
-These runbooks are documentation examples, not evidence of completed lab tests.
+- Verify monitoring events before making changes.
+- Prioritize business-critical services.
+- Use historical metrics during troubleshooting.
+- Correlate infrastructure and application monitoring data.
+- Maintain approved recovery and escalation procedures.
+- Avoid unnecessary restarts without investigation.
+- Protect credentials and sensitive configuration information.
+- Record technical findings and corrective actions.
+- Use incident reviews to improve monitoring coverage.
 
-Future lab work will include controlled incident simulations, troubleshooting evidence, and sanitized screenshots.
+## 12. Related Documentation
+
+- [Monitoring Architecture](architecture.md)
+- [Branch WAN Monitoring](branch-wan-monitoring.md)
+- [Jira & Tomcat Monitoring](jira-tomcat-monitoring.md)
+- [SharePoint Portal Monitoring](sharepoint-portal-monitoring.md)
+- [Nextcloud Service Monitoring](nextcloud-service-monitoring.md)
+- [Zabbix Proxy Deployment](zabbix-proxy-deployment.md)
+- [Monitoring Dashboards and Alerting](monitoring-dashboards-alerting.md)
+
+## 13. References
+
+- [Zabbix Documentation](https://www.zabbix.com/documentation/current/)
+- [Netdata Documentation](https://learn.netdata.cloud/)
+- [Microsoft Windows Server Documentation](https://learn.microsoft.com/en-us/windows-server/)
