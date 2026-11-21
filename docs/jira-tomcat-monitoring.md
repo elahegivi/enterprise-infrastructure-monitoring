@@ -1,71 +1,173 @@
-# Jira / Tomcat — Application Monitoring Case Study
 
-**Category:** Application observability · Windows Server · Zabbix  
-**Status:** Documented from hands-on monitoring work; public examples remain untested in the lab.
+# Jira & Tomcat — Enterprise Application Monitoring
 
-## Scenario
+## 1. Overview
 
-Monitor a business-critical Jira application hosted on Windows Server, using the Jira Windows service and a Tomcat-based application runtime. The monitoring design separates connectivity, web availability, application runtime, operating-system resource use, and database availability to make incidents easier to diagnose.
+This case study documents the monitoring of a business-critical Jira application hosted on Windows Server, using Zabbix.
 
-> This is an anonymized portfolio case study. It contains no actual server names, internal addresses, credentials, or client data.
+The monitoring approach covers network availability, Jira Windows service status, Tomcat runtime performance, HTTPS availability, TLS certificates, and infrastructure dependencies.
 
-## Monitoring coverage
+The documentation is based on hands-on enterprise monitoring experience, with anonymized examples suitable for public technical reference.
 
-| Layer | Monitored signals | Implementation status |
+## 2. Monitoring Architecture
+
+```mermaid
+flowchart TD
+    Z["Zabbix Server / Proxy"]
+    W["Windows Server"]
+    J["Jira Application"]
+    T["Tomcat Runtime"]
+    DB["Database"]
+
+    Z -->|"ICMP / Agent"| W
+    Z -->|"HTTPS Web Scenario"| J
+    W --> J
+    J --> T
+    J --> DB
+```
+
+## 3. Monitoring Coverage
+
+| Layer | Monitored Metrics | Operational Scope |
 |---|---|---|
-| Network | ICMP availability, loss and response time | Implemented |
-| Web | HTTPS availability, HTTP status and response time via Zabbix web scenario | Implemented |
-| Application | Jira Windows service state (`service.info["jira",state]`) | Implemented |
-| Tomcat | Process presence, CPU and private memory | Implemented |
+| Network | ICMP availability, packet loss, latency | Implemented |
+| Web | HTTPS availability, response time, HTTP status | Implemented |
+| Application | Jira Windows service state | Implemented |
+| Tomcat | Process availability, CPU and memory | Implemented |
 | Certificates | TLS certificate expiration | Implemented |
-| Database | MySQL availability | Present in monitoring scope |
-| Virtualization | ESXi/vCenter layer | Deferred during migration |
-| Logs / JMX | Detailed log parsing and JMX metrics | Out of scope in the referenced phase |
+| Operating System | CPU, memory, disk, network traffic | Implemented |
+| Database | MySQL availability | Included in monitoring scope |
+| Virtualization | VMware ESXi / vCenter | Deferred during infrastructure migration |
 
-## Example Zabbix item and trigger
+Detailed application log parsing and JMX monitoring are outside the scope of this case study.
 
-A Windows service state check can use:
+## 4. Jira Windows Service Monitoring
+
+The Jira Windows service can be monitored through the Zabbix Agent.
+
+Example item key:
 
 ```text
 service.info["jira",state]
 ```
 
-In a Zabbix lab, verify the actual service name and state mappings before applying a condition. An example alert for a non-running service is:
+Example trigger:
 
 ```text
 last(/JIRA/service.info["jira",state])<>0
 ```
 
-`JIRA` is a **sample host name**; replace it with the lab host. The condition is intentionally broad and should be reviewed against the service's possible states and the team's escalation policy.
+`JIRA` is an illustrative Zabbix host name.
 
-## Example operational alert scenarios
+The Windows service identifier and state mapping must correspond to the monitored installation.
 
-- Jira Windows service stops responding.
-- The Tomcat process disappears or consumes unusually high CPU/memory.
-- The HTTPS check fails or web response time exceeds a reviewed threshold.
-- TLS certificate expiration approaches its renewal threshold.
-- Database availability fails independently of application response.
+## 5. Tomcat Runtime Monitoring
 
-Observed operational configuration work included response-time alerting, Tomcat CPU and memory thresholds, SSL expiration alerts and Jira service alerts. Thresholds are not universal recommendations; they require a lab baseline.
+Tomcat monitoring provides additional visibility into application runtime behavior.
 
-## Incident triage — illustrative runbook
+Monitoring areas include:
 
-1. Check Zabbix event time and whether the failure is network-wide or Jira-specific.
-2. Confirm HTTPS availability and recent response-time trend.
-3. Check Windows service state and Tomcat process metrics.
-4. Review host CPU, memory, disk and network conditions.
-5. Check the database availability signal.
-6. Correlate findings and escalate to the relevant application/database team.
-7. Confirm service recovery, close the event and record the root cause.
+- Process availability
+- CPU utilization
+- Memory consumption
+- Runtime resource trends
 
-## Evidence to add after lab testing
+Monitoring application processes alongside operating system resource metrics helps distinguish application-specific issues from server-wide resource pressure.
 
-- [ ] Zabbix item and trigger screenshots from a synthetic test host
-- [ ] Web scenario screenshot using a public or local test endpoint
-- [ ] Anonymized alert-to-recovery sequence
-- [ ] Baseline and threshold rationale
-- [ ] Exportable template validated with Zabbix 7.4
+## 6. Web Availability Monitoring
 
-## Notes on results
+Zabbix web scenarios monitor user-facing application availability.
 
-No outage reduction, MTTR improvement, or performance percentage is claimed here because no verified before/after measurement has been provided.
+Typical metrics include:
+
+- HTTPS endpoint accessibility
+- HTTP response status
+- Response time
+- Web scenario failures
+
+Web availability monitoring complements Windows service monitoring, because a running service does not always guarantee that Jira is accessible.
+
+## 7. TLS Certificate Monitoring
+
+TLS certificate monitoring supports early detection of upcoming certificate expiration.
+
+Key operational considerations:
+
+- Certificate expiration date
+- Warning thresholds
+- Renewal ownership
+- HTTPS availability after renewal
+
+## 8. Operational Alert Scenarios
+
+| Alert | Investigation Focus |
+|---|---|
+| Jira Windows service stopped | Service state and Windows logs |
+| Tomcat process unavailable | Application runtime and process status |
+| HTTPS check failed | Web endpoint and application dependencies |
+| Elevated response time | Application, server and database performance |
+| High Tomcat CPU or memory | Runtime resource consumption |
+| Certificate expiration approaching | TLS certificate renewal |
+| Database unavailable | Database service and connectivity |
+
+Alert thresholds should reflect normal operating conditions and application requirements.
+
+## 9. Incident Investigation Workflow
+
+```mermaid
+flowchart TD
+    A["Jira Monitoring Alert"]
+    B{"Host Reachable?"}
+    C["Investigate Network / Server"]
+    D{"HTTPS Available?"}
+    E["Inspect Jira Service / Tomcat"]
+    F["Review Performance Metrics"]
+    G["Check Database and Logs"]
+    H["Verify Recovery"]
+    I["Document Incident"]
+
+    A --> B
+    B -->|No| C
+    B -->|Yes| D
+    D -->|No| E
+    D -->|Yes| F
+    C --> G
+    E --> G
+    F --> G
+    G --> H --> I
+```
+
+### Investigation Procedure
+
+1. Review the Zabbix event and affected monitoring items.
+2. Verify network availability.
+3. Check HTTPS availability and response time.
+4. Inspect Jira Windows service status.
+5. Review Tomcat process and resource metrics.
+6. Examine Windows Server CPU, memory, disk and network performance.
+7. Check database availability and application dependencies.
+8. Review application and operating system logs.
+9. Verify service recovery.
+10. Document the incident and corrective action.
+
+## 10. Monitoring Design Considerations
+
+- Distinguish server reachability from application availability.
+- Monitor Jira service state independently of HTTPS availability.
+- Correlate Tomcat metrics with operating system performance.
+- Monitor TLS certificate expiration proactively.
+- Review alert severity and escalation rules.
+- Use historical performance data to establish appropriate thresholds.
+- Protect monitoring credentials and sensitive application information.
+
+## 11. Related Documentation
+
+- [Jira Zabbix Configuration](jira-zabbix-configuration.md)
+- [Monitoring Architecture](architecture.md)
+- [Monitoring Dashboards and Alerting](monitoring-dashboards-alerting.md)
+- [Incident Response Runbooks](incident-response-runbooks.md)
+
+## 12. References
+
+- [Zabbix Documentation](https://www.zabbix.com/documentation/current/)
+- [Zabbix Windows Agent Monitoring](https://www.zabbix.com/documentation/current/en/manual/config/items/itemtypes/zabbix_agent/win_keys)
